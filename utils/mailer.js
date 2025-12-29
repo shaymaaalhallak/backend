@@ -1,16 +1,10 @@
-const nodemailer = require("nodemailer");
+const { Resend } = require("resend");
 
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 // ORDER CONFIRMATION EMAIL (TO CUSTOMER)
 async function sendOrderEmail(customerEmail, orderId, total) {
-  return transporter.sendMail({
+  return resend.emails.send({
     from: `"Book Store" <${process.env.EMAIL_USER}>`,
     to: customerEmail,
     subject: "📦 Order Confirmation - Book Store",
@@ -27,7 +21,7 @@ Total Amount: $${total}
 
 // CONTACT FORM AUTO-REPLY (TO USER)
 async function sendContactEmail(name, email, message) {
-  return transporter.sendMail({
+  return resend.emails.send({
     from: `"Book Store" <${process.env.EMAIL_USER}>`,
     to: email,
     subject: "📩 We received your message",
