@@ -11,7 +11,10 @@ const app = express();
 // Middlewares
 app.use(
   cors({
-    origin: ["http://localhost:3000", "https://your-site.netlify.app"],
+    origin: [
+      "http://localhost:3000",
+      "https://enchanting-caramel-13fd90.netlify.app",
+    ],
   })
 );
 
