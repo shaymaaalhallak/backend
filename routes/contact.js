@@ -10,25 +10,24 @@ router.post("/", async (req, res) => {
     return res.status(400).json({ error: "All fields are required" });
   }
 
-  const sql = `
-    INSERT INTO contact_messages (name, email, message)
-    VALUES (?, ?, ?)
-  `;
+  try {
+    const result = await db.query(
+      `INSERT INTO contact_messages (name, email, message)
+       VALUES ($1, $2, $3)
+       RETURNING id`,
+      [name, email, message]
+    );
 
-  db.query(sql, [name, email, message], async (err, result) => {
-    if (err) {
-      console.error("DB insert error:", err);
-      return res.status(500).json({ error: "Database error" });
-    }
+    const insertedId = result.rows[0].id;
 
-    try {
-      await sendContactEmail(name, email, message);
-    } catch (emailErr) {
-      console.error("Contact email failed:", emailErr);
-    }
+    // Send email (non-blocking)
+    sendContactEmail(name, email, message).catch(console.error);
 
-    res.json({ success: true, insertedId: result.insertId });
-  });
+    res.json({ success: true, insertedId });
+  } catch (err) {
+    console.error("DB insert error:", err);
+    res.status(500).json({ error: "Database error" });
+  }
 });
 
 module.exports = router;

@@ -4,7 +4,7 @@ const db = require("../db");
 const { sendOrderEmail } = require("../utils/mailer");
 
 // PLACE ORDER
-router.post("/", (req, res) => {
+router.post("/", async (req, res) => {
   const { customer, cart, total } = req.body;
 
   if (!customer || !cart || !total) {
@@ -19,76 +19,50 @@ router.post("/", (req, res) => {
     return res.status(400).json({ error: "All customer fields are required" });
   }
 
-  db.beginTransaction((err) => {
-    if (err) {
-      console.error("Transaction start error:", err);
-      return res.status(500).json({ error: "Transaction error" });
-    }
+  try {
+    // Start transaction using pg client
+    const client = await db.connect();
 
-    const orderSql = `
-      INSERT INTO orders (name, email, phone, address, delivery_type, total)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `;
+    try {
+      await client.query("BEGIN");
 
-    db.query(
-      orderSql,
-      [name, email, phone, address, deliveryType, total],
-      (err, result) => {
-        if (err) {
-          return db.rollback(() => {
-            console.error("Order insert error:", err);
-            res.status(500).json({ error: "Failed to create order" });
-          });
-        }
+      // Insert order and return the id
+      const orderResult = await client.query(
+        `INSERT INTO orders (name, email, phone, address, delivery_type, total)
+         VALUES ($1, $2, $3, $4, $5, $6)
+         RETURNING id`,
+        [name, email, phone, address, deliveryType, total]
+      );
 
-        const orderId = result.insertId;
+      const orderId = orderResult.rows[0].id;
 
-        const itemPromises = cart.map((item) => {
-          return new Promise((resolve, reject) => {
-            if (!item.book_id) {
-              return reject(new Error("Invalid book_id"));
-            }
-
-            db.query(
-              `INSERT INTO order_items (order_id, book_id, quantity, price)
-               VALUES (?, ?, ?, ?)`,
-              [orderId, item.book_id, Number(item.qty), Number(item.price)],
-              (err) => {
-                if (err) return reject(err);
-                resolve();
-              }
-            );
-          });
-        });
-
-        Promise.all(itemPromises)
-          .then(async () => {
-            db.commit(async (err) => {
-              if (err) {
-                return db.rollback(() => {
-                  console.error("Commit error:", err);
-                  res.status(500).json({ error: "Commit failed" });
-                });
-              }
-
-              try {
-                await sendOrderEmail(email, orderId, total);
-              } catch (emailErr) {
-                console.error("Email failed:", emailErr);
-              }
-
-              res.json({ success: true, orderId });
-            });
-          })
-          .catch((err) => {
-            db.rollback(() => {
-              console.error("Order item insert error:", err);
-              res.status(500).json({ error: "Failed to save order items" });
-            });
-          });
+      // Insert order items
+      for (const item of cart) {
+        if (!item.book_id) throw new Error("Invalid book_id");
+        await client.query(
+          `INSERT INTO order_items (order_id, book_id, quantity, price)
+           VALUES ($1, $2, $3, $4)`,
+          [orderId, item.book_id, Number(item.qty), Number(item.price)]
+        );
       }
-    );
-  });
+
+      await client.query("COMMIT");
+
+      // Send email (non-blocking)
+      sendOrderEmail(email, orderId, total).catch(console.error);
+
+      res.json({ success: true, orderId });
+    } catch (err) {
+      await client.query("ROLLBACK");
+      console.error("Order error:", err);
+      res.status(500).json({ error: "Failed to create order" });
+    } finally {
+      client.release();
+    }
+  } catch (err) {
+    console.error("Transaction error:", err);
+    res.status(500).json({ error: "Transaction error" });
+  }
 });
 
 module.exports = router;
