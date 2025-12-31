@@ -11,7 +11,7 @@ const app = express();
 // Middlewares
 app.use(
   cors({
-    origin: ["http://localhost:3000", "wry-ants.surge.sh"],
+    origin: ["http://localhost:3000", "https://wry-ants.surge.sh"],
   })
 );
 
