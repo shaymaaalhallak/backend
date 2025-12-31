@@ -8,7 +8,6 @@ const { sendContactEmail } = require("./utils/mailer");
 
 const app = express();
 
-// Middlewares
 app.use(
   cors({
     origin: ["http://localhost:3000", "https://wry-ants.surge.sh"],
