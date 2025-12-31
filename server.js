@@ -2,11 +2,27 @@ require("dotenv").config();
 
 console.log("EMAIL USER:", process.env.EMAIL_USER);
 console.log("EMAIL PASS LENGTH:", process.env.EMAIL_PASS?.length);
+console.log("DATABASE_URL:", process.env.DATABASE_URL ? "Set" : "NOT SET");
 const express = require("express");
 const cors = require("cors");
+const db = require("./db");
 const { sendContactEmail } = require("./utils/mailer");
+db.query("SELECT NOW()")
+  .then(() => console.log(" PostgreSQL Connected!"))
+  .catch((err) => console.error(" PostgreSQL Failed:", err.message));
 
 const app = express();
+app.use(
+  cors({ origin: ["http://localhost:3000", "https://wry-ants.surge.sh"] })
+);
+db.query("SELECT NOW()")
+  .then(() => console.log(" PostgreSQL Connected!"))
+  .catch((err) => console.error(" PostgreSQL Failed:", err.message));
+db.query("SELECT NOW()");
+db.query("SELECT NOW()");
+db.query("SELECT NOW()")
+  .then(() => console.log(" PostgreSQL Connected!"))
+  .catch((err) => console.error(" PostgreSQL Failed:", err.message));
 
 app.use(
   cors({
