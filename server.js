@@ -22,7 +22,7 @@ const app = express();
 
 app.use(
   cors({
-    origin: ["http://localhost:3000", "https://wry-ants.surge.sh"],
+    origin: ["http://localhost:3000", "https://ugliest-mailbox.surge.sh"],
   })
 );
 
